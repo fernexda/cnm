@@ -1,22 +1,20 @@
 # -*- coding: utf-8 -*-
 
 import sys
-sys.path.insert(0,'../cnm')
-print(sys.path)
+sys.path.insert(0,'../')
 
-#from cnm import Cluster#, MarkovProcess, CNM
-#import Cluster
-from cluster import Cluster
+from cnm import Clustering, TransitionProperties, Propagation
 
-# Run the Lorenz system
 
 # Create the Lorenz data
 from helper import create_lorenz_data
-data = create_lorenz_data()
+data, dt = create_lorenz_data()
 
 # CNM parameters:
 K = 50 # Number of clusters
 L = 23 # Model order
+K = 5
+L = 2
 
 # Clustering
 from sklearn.cluster import KMeans
@@ -25,13 +23,17 @@ cluster_config = {
         'cluster_algo': KMeans(n_clusters=K,max_iter=300,n_init=10,n_jobs=-1),
         }
 
-cluster = Cluster(cluster_config)
+clustering = Clustering(**cluster_config)
 
 # Transition properties
-process_config = {
-        'cluster': cluster,
+transition_config = {
+        'clustering': clustering,
+        'dt': dt,
+        'K': K,
+        'L': L,
+        }
 
-process = MarkovProcess(
+transition_properties = TransitionProperties(**transition_config)
 
 
 #815         KM = KMeans(

@@ -23,8 +23,10 @@ def create_lorenz_data():
                 ]
 
     # Time settings
-    T = 1000                     # total time
+    T = 100                     # total time
     n_points = T * 60            # number of samples
+    #T = 1000                     # total time
+    #n_points = T * 60            # number of samples
     t = np.linspace(0,T,n_points)# Time vector
     dt = t[1]-t[0]               # Time step
 
@@ -34,4 +36,4 @@ def create_lorenz_data():
 
     # remove the first 5% to keep only the 'converged' part which is in the ears
     points_to_remove = int(0.05 * n_points)
-    return data[points_to_remove:,:]
+    return data[points_to_remove:,:], dt

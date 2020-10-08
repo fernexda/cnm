@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-class Network:
+class Propagation:
 
     def __init__(self):
         pass
