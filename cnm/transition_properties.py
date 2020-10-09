@@ -15,9 +15,9 @@ class TransitionProperties:
         if self.L <= 0:
             raise Exception('The model order must be > 0')
 
-        self.compute_Q()
+        self._compute_Q()
 
-    def compute_Q(self):
+    def _compute_Q(self):
         """Compute the direct transition matrix of order L."""
 
         # Get the sequence of visited clusters
