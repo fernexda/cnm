@@ -34,11 +34,19 @@ class Clustering:
 if __name__=='__main__':
 
     from sklearn.cluster import KMeans
+    import numpy as np
+    np.random.seed(0)
+
+    # get test data
+    data = np.load('test_data/data.npy')
+    centroids_test = np.loadtxt('test_data/centroids-K5')
+
+    # Perform clustering
+    K = 5
     cluster_config = {
             'data': data,
-            'cluster_algo': KMeans(n_clusters=K,max_iter=300,n_init=10,n_jobs=-1),
+            'cluster_algo': KMeans(n_clusters=K,max_iter=1000,n_init=100,n_jobs=-1),
             }
-
     clustering = Clustering(**cluster_config)
 
-    cl = Clustering
+    assert np.all(clustering.centroids == centroids_test)
