@@ -2,47 +2,62 @@
 
 import sys
 sys.path.insert(0,'../')
-
 from cnm import Clustering, TransitionProperties, Propagation
-
 
 def runLorenz():
 
-    # Create the Lorenz data
     from helper import create_lorenz_data
-    data, dt = create_lorenz_data()
-    import numpy as np
-    data = np.load('/home/daniel/Documents/Thesis/CNM/runDS/Lorenz/SOC-WithPast/francki/Data/Rho28/Data.npy')
-    print(data.shape)
+    from sklearn.cluster import KMeans
 
-    #exit()
+    # Create the Lorenz data
+    data, dt = create_lorenz_data()
 
     # CNM parameters:
+    # ---------------
     K = 50 # Number of clusters
     L = 23 # Model order
-    K = 5
-    L = 2
 
     # Clustering
-    from sklearn.cluster import KMeans
+    # ----------
     cluster_config = {
             'data': data,
             'cluster_algo': KMeans(n_clusters=K,max_iter=300,n_init=10,n_jobs=-1),
             }
-    
+
     clustering = Clustering(**cluster_config)
-    
+
     # Transition properties
+    # ---------------------
     transition_config = {
             'clustering': clustering,
             'dt': dt,
             'K': K,
             'L': L,
             }
-    
+
     transition_properties = TransitionProperties(**transition_config)
-    
-    
+
+    # Propagation
+    # -----------
+    propagation_config = {
+            'transition_properties': transition_properties,
+            }
+
+    ic = 0 # Index of the centroid to start in
+    t_total = 1000
+    dt = 0.001   # To spline-interpolate the centroid-to-centroid trajectory
+
+    propagation = Propagation(**propagation_config)
+    t_hat, x_hat = propagation.run(t_total,ic,dt)
+
+    # Plot the results
+    # ----------------
+    from helper import (plot_phase_space, plot_time_series,plot_cpd,
+                        plot_autocorrelation)
+
+    plot_phase_space(data,clustering.centroids,clustering.labels)
+
+
     #815         KM = KMeans(
     #816                 n_clusters=self.nClusters,
     #817                 max_iter=1000,

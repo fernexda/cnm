@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import numpy as np
+
 class Clustering:
     """Perform the data clustering with the requested clustering algorithm.
 
@@ -21,6 +23,9 @@ class Clustering:
 
     centroids: ndarray of shape (K,n_dim)
         Centroids of the clusters.
+
+    cluster_sequence: ndarray of shape (# transition+1,)
+        Sequence of visited clusters.
     """
 
     def __init__(self,data,cluster_algo):
@@ -30,6 +35,8 @@ class Clustering:
 
         self.labels = cluster_algo.labels_
         self.centroids = cluster_algo.cluster_centers_
+        diff = np.diff(self.labels)
+        self.cluster_sequence = self.labels[np.insert(diff.astype(np.bool), 0, True)]
 
 if __name__=='__main__':
 

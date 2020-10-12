@@ -15,6 +15,14 @@ class TransitionProperties:
         possible destination centroid and the 2 column is the corresponding
         probability.
 
+    T: dict
+        Transition times for an L-order model. The keys of T are string
+        of the past centroids and the future one. If the previously visited centroids are 3
+        (newest), 2, and 1 (oldest), and the next destination is 4, the key will
+        be '1,2,3,4'. The corresponding
+        values are the transition time of the transition 3->4, having visited 1
+        and 2 before..
+
     Notes
     -----
     If the labels are [0,1,1,2,2,2,0,3,3,4,4,4], the model order is L=3:
@@ -33,7 +41,9 @@ class TransitionProperties:
 
     def __init__(self, clustering, K: int, L: int, dt):
 
+        self.clustering = clustering
         self.labels = clustering.labels
+        self.cluster_sequence = clustering.cluster_sequence
         self.K = K
         self.L = L
         self.dt = dt
@@ -45,18 +55,41 @@ class TransitionProperties:
         self._compute_Q()
         self._compute_T()
 
+    def step(self,past_cl):
+        """Find the next centroid and corresponding transition time.
+
+        Parameters
+        ----------
+        past_cl: list of length L
+            Contains the current and previous centroids. With L=3,
+            past_cl=[c_i,c_j,c_k] (in the case where c_l is the destination)
+
+        Returns
+        -------
+        next_cl: int
+            Index of the next cluster
+        transition_time: float
+            Transition time to transit from past_cl[-1] to next_cl.
+        """
+
+        # Select next cluster
+        key = ','.join(map(str, past_cl))
+        next_cl = int(np.random.choice(self.Q[key][:,0], p=self.Q[key][:,1]))
+
+        # Read the corresponding transition time
+        key = ','.join(map(str, past_cl))+',{}'.format(str(next_cl))
+        transition_time = self.T[key]
+
+        return next_cl, transition_time
+
     def _compute_Q(self):
         """Compute the direct transition matrix of order L."""
 
-        # Get the sequence of visited clusters
-        diff = np.diff(self.labels)
-        cluster_sequence = self.labels[np.insert(diff.astype(np.bool), 0, True)]
-
         # Initialize the past as the first L centroids
-        past_cl = cluster_sequence[:self.L].astype(int)
+        past_cl = self.cluster_sequence[:self.L].astype(int)
         self.Q = {}
 
-        for next_cl in cluster_sequence[self.L:-2]:
+        for next_cl in self.cluster_sequence[self.L:-2]:
 
             key = ','.join(map(str, past_cl))
 
@@ -77,7 +110,7 @@ class TransitionProperties:
             probability = np.empty((0,2),dtype=int)
             for elt in np.unique(possible_next):
                 probability = np.vstack((probability,[elt,occurrences[elt]]))
-        
+
             # Re-write the values with the probabilities
             self.Q[k] = probability
 
@@ -86,20 +119,16 @@ class TransitionProperties:
 
         from itertools import groupby
 
-        # Get the sequence of visited clusters
-        diff = np.diff(self.labels)
-        cluster_sequence = self.labels[np.insert(diff.astype(np.bool), 0, True)]
-
         # Number of steps in each sequentially visited cluster
         n_steps_in_cl = np.array([sum(1 for i in g) for k,g in groupby(self.labels)])
 
         self.T = {}
 
         # Loop over
-        for iCl in range(cluster_sequence.size-(self.L+1)): # Last transition is neglected
+        for iCl in range(self.cluster_sequence.size-(self.L+1)): # Last transition is neglected
 
             # Sequential chunks of length self.L+1 (current, next and all pasts)
-            cluster_sequence_loc = cluster_sequence[iCl:iCl+self.L+1]
+            cluster_sequence_loc = self.cluster_sequence[iCl:iCl+self.L+1]
 
             transition_time = np.sum(
                     n_steps_in_cl[iCl+self.L-1:iCl+self.L+1]
