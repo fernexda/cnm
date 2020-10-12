@@ -3,6 +3,33 @@
 import numpy as np
 
 class TransitionProperties:
+    """Compute the direct transition probability Q and the transition time T
+
+    Attributes
+    ----------
+    Q: dict
+        Transition probabilities for an L-order model.  The keys of Q are string
+        of the past centroids. If the previously visited centroids are 3
+        (newest), 2, and 1 (oldest), the key will be '1,2,3'. The corresponding
+        values are 2D arrays, where the first column is the index of the
+        possible destination centroid and the 2 column is the corresponding
+        probability.
+
+    Notes
+    -----
+    If the labels are [0,1,1,2,2,2,0,3,3,4,4,4], the model order is L=3:
+    Q = {
+            '0,1,2': [0,1],
+            '1,2,0': [3,1],
+        }
+    T = {
+            '0,1,2,0': Tau_(2->0),
+            '1,2,0,3': Tau_(0->3),
+        }
+    The requests to T are always done with one more key than the requests to Q.
+    The transition to the final cluster is neglected, because the transition is
+    not complete, so the corresponding time would be wrong.
+    """
 
     def __init__(self, clustering, K: int, L: int, dt):
 
@@ -16,25 +43,24 @@ class TransitionProperties:
             raise Exception('The model order must be > 0')
 
         self._compute_Q()
+        self._compute_T()
 
     def _compute_Q(self):
         """Compute the direct transition matrix of order L."""
 
         # Get the sequence of visited clusters
         diff = np.diff(self.labels)
-        # idx_transition give the first index of a new cluster
-        idx_transition = np.where(diff!=0)[0] + 1
-        Idx_transition = np.insert(idx_transition,0,0)
         cluster_sequence = self.labels[np.insert(diff.astype(np.bool), 0, True)]
 
         # Initialize the past as the first L centroids
-        past_cl = cluster_sequence[:self.L]
+        past_cl = cluster_sequence[:self.L].astype(int)
         self.Q = {}
 
         for next_cl in cluster_sequence[self.L:-2]:
 
             key = ','.join(map(str, past_cl))
 
+            # Make sure the key exists (and the value is a list)
             if key not in self.Q:
                 self.Q[key] = []
 
@@ -47,117 +73,91 @@ class TransitionProperties:
         # Compute the probabilities
         for k, possible_next in self.Q.items():
 
-            BC = np.bincount(possible_next) / len(possible_next)
+            occurrences = np.bincount(possible_next) / len(possible_next)
             probability = np.empty((0,2),dtype=int)
             for elt in np.unique(possible_next):
-                probability = np.vstack((probability,[elt,BC[elt]]))
+                probability = np.vstack((probability,[elt,occurrences[elt]]))
         
-            # --> Re-write the probabilities
+            # Re-write the values with the probabilities
             self.Q[k] = probability
 
-        for k,v in self.Q.items():
-            print(k)
-            for i in range(v.shape[0]):
-                print('  ',v[i,0],v[i,1])
-        exit()
-#        
-#            # --> Get the values
-#            Values = QNested.getValues(kGal)
-#        
-#            # --> Compute the corresponding probabilities
-#            BC = np.bincount(Values) / Values.size
-#            Proba = np.empty((0,2),dtype=int)
-#            for elt in np.unique(Values):
-#                Proba = np.vstack((Proba,[elt,BC[elt]]))
-#        
-#            # --> Re-write the probabilities
-#            QNested.addToDict('add',kGal,Proba)
-#        
-#        # --> Convert from default dict to normal dict
-#        QNested.DDict2Dict()
-#
+    def _compute_T(self):
+        """Compute the transition time"""
 
+        from itertools import groupby
 
+        # Get the sequence of visited clusters
+        diff = np.diff(self.labels)
+        cluster_sequence = self.labels[np.insert(diff.astype(np.bool), 0, True)]
 
+        # Number of steps in each sequentially visited cluster
+        n_steps_in_cl = np.array([sum(1 for i in g) for k,g in groupby(self.labels)])
 
+        self.T = {}
 
-        print(idx_start)
-        print(past)
-        print('labels')
-        for i in range(idx_start+5):
-            print(self.labels[i])
-        print('labels[idx_start]',self.labels[idx_start])
+        # Loop over
+        for iCl in range(cluster_sequence.size-(self.L+1)): # Last transition is neglected
 
-        print(cluster_sequence[:self.L+1])
+            # Sequential chunks of length self.L+1 (current, next and all pasts)
+            cluster_sequence_loc = cluster_sequence[iCl:iCl+self.L+1]
 
+            transition_time = np.sum(
+                    n_steps_in_cl[iCl+self.L-1:iCl+self.L+1]
+                    )/2. * self.dt
 
+            key = ','.join(map(str, cluster_sequence_loc))
 
-## --------------------------------------------------------------------------------
-#        labels = self.labels
-#        # --> general configuration
-#        n = self.npast
-#        qnested = nesteddict()
-#
-#        diff = np.diff(labels)
-#        # --> idxtransition give the first index of a new cluster
-#        idxtransition = np.where(diff!=0)[0] + 1
-#        idxtransition = np.insert(idxtransition,0, 0)
-#        
-#        clusternumbers = labels[np.insert(diff.astype(np.bool), 0, true)]
-#        
-#        # --> get past. n=0 means no past.
-#        past = clusternumbers[:n]
-#        idxstart = np.where(diff != 0)[0][n] # start just before next transition
-#        keysgal = []
-#        
-#        # --> start checking the transitions
-#        # note: we neglect the last transition to keep exactly the same
-#        #       transitions as those identified by tau. otherwise, cnm can look
-#        #       in taunested for keys that don't exist.
-#        for i in range(idxstart,idxtransition[-2]):
-#        
-#            # --> transition detected (between i+n and i+n-1)
-#            if labels[i+1] != labels[i]:
-#        
-#                # --> get dictionary keys:
-#                keys = list(Past)
-#                Keys.append(Labels[i])
-#        
-#                # --> Value:
-#                Value = Labels[i+1]
-#        
-#                # --> Check if keys already exist:
-#                if not QNested.checkExistence(Keys):
-#                    QNested.addToDict('add',Keys,[])
-#        
-#                # --> Append value
-#                QNested.addToDict('append',Keys,Value)
-#        
-#                # --> Update the past
-#                Past = Keys[1:]
-#        
-#                # --> Keep memory of the keys
-#                if not Keys in KeysGal:
-#                    KeysGal.append(Keys)
-#
-#
-#
-#
-#        # --> Get the transition probabilities
-#        for kGal in KeysGal:
-#        
-#            # --> Get the values
-#            Values = QNested.getValues(kGal)
-#        
-#            # --> Compute the corresponding probabilities
-#            BC = np.bincount(Values) / Values.size
-#            Proba = np.empty((0,2),dtype=int)
-#            for elt in np.unique(Values):
-#                Proba = np.vstack((Proba,[elt,BC[elt]]))
-#        
-#            # --> Re-write the probabilities
-#            QNested.addToDict('add',kGal,Proba)
-#        
-#        # --> Convert from default dict to normal dict
-#        QNested.DDict2Dict()
-#
+            # Make sure the key exists (and the value is a list)
+            if key not in self.T:
+                self.T[key] = []
+            self.T[key].append(transition_time)
+
+        # Average the transition times of the same sequence of centroids
+        for k, transition_times in self.T.items():
+            self.T[k] = np.mean(transition_times)
+
+if __name__=='__main__':
+
+    from sklearn.cluster import KMeans
+    import numpy as np
+    np.random.seed(0)
+
+    # CNM config
+    K = 5
+    L = 3
+    dt = 0.016666944449074152
+
+    # get test data and perform clustering (needed for transition properties)
+    data = np.load('test_data/data.npy')
+    Q_test = np.load('test_data/Q-K{}-L{}.npy'.format(K,L),allow_pickle=True).item()
+    T_test = np.load('test_data/T-K{}-L{}.npy'.format(K,L),allow_pickle=True).item()
+    cluster_config = {
+            'data': data,
+            'cluster_algo': KMeans(n_clusters=K,max_iter=1000,n_init=100,n_jobs=-1),
+            }
+    from clustering import Clustering
+    clustering = Clustering(**cluster_config)
+
+    # Transition properties
+    L = 3
+    transition_config = {
+            'clustering': clustering,
+            'dt': dt,
+            'K': K,
+            'L': L,
+            }
+    transition_properties = TransitionProperties(**transition_config)
+
+    # check if the keys of Q are correct
+    assert transition_properties.Q.keys() == Q_test.keys()
+
+    # check if proba arrays are the same
+    for k in Q_test.keys():
+        np.testing.assert_allclose(transition_properties.Q[k], Q_test[k], rtol=1e-2, atol=0)
+
+    # check if the keys of T are correct
+    assert transition_properties.T.keys() == T_test.keys()
+
+    # check if T is correct
+    assert transition_properties.T == T_test
+

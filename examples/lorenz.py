@@ -10,7 +10,7 @@ def runLorenz():
 
     # Create the Lorenz data
     from helper import create_lorenz_data
-    #data, dt = create_lorenz_data()
+    data, dt = create_lorenz_data()
     import numpy as np
     data = np.load('/home/daniel/Documents/Thesis/CNM/runDS/Lorenz/SOC-WithPast/francki/Data/Rho28/Data.npy')
     print(data.shape)
