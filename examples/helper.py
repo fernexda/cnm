@@ -17,18 +17,20 @@ params = {
 
 plt.rcParams.update(params)
 
-FIGSIZE = (8,7)
-LW = 3          # line with
+#FIGSIZE1 = (6,5)
+#FIGSIZE2 = (6,4)
+LW = 2          # line with
 LFONTSIZE = 18  # label font size
 TFONTSIZE = 15  # tick font size
 # ------------------------------------------------------------------------------
 
 def plot_phase_space(data,centroids,labels):
+    """Plot the phase space with the snapshots trajectory and the centroids"""
 
     n_cl = centroids.shape[0]
 
     plt.close()
-    fig = plt.figure(figsize=(FIGSIZE))
+    fig = plt.figure(figsize=(6,5))
     ax = fig.add_subplot(111,projection='3d')
 
     # Data line (grey). For clarity, show only part of the trajectory.
@@ -82,6 +84,7 @@ def plot_phase_space(data,centroids,labels):
 
 
 def plot_time_series(t,x,t_hat,x_hat):
+    """Plot the time series of data and CNM"""
 
     # Truncate at the same length
     size = min(t.size,t_hat.size)
@@ -190,14 +193,14 @@ def plot_time_series(t,x,t_hat,x_hat):
 def plot_cpd(x,x_hat):
     """Plot the cluster probability vector"""
 
-    # Re-cluster original and cnm data with 10 clusters only for clarity
+    # Re-cluster original and CNM data with 10 clusters only for clarity
     from sklearn.cluster import KMeans
     K = 10
     kmeans = KMeans(n_clusters=K,max_iter=300,n_init=10,n_jobs=-1)
     kmeans.fit(x)
     labels = kmeans.labels_
 
-    # Predict cluster affiliation of the cnm data
+    # Predict cluster affiliation of the CNM data
     labels_hat = kmeans.predict(x_hat)
 
     # Probability distribution
@@ -259,7 +262,52 @@ def plot_autocorrelation(t,x,t_hat,x_hat):
 
     # Compute autocorrelation function
     time_blocks = 40
-    compute_autocorrelation(t,x,time_blocks)
+    r = compute_autocorrelation(t,x,time_blocks)
+    r_hat = compute_autocorrelation(t_hat,x_hat,time_blocks)
+    lags = np.arange(r.size) * (t[-1]-t[0])
+
+    # Plot
+    fig = plt.figure(figsize=(6,3.5))
+    ax = fig.add_subplot(111)
+    
+    ax.plot(
+            lags,
+            r,
+            '-',
+            c='k',
+            lw=LW,
+            )
+    ax.plot(
+            lags,
+            r_hat,
+            '-',
+            c='r',
+            lw=LW,
+            )
+    
+    # --> Labels
+    ax.set_xlabel(r'$\tau$',fontsize=LFONTSIZE)
+    ax.set_ylabel(r'$R$',fontsize=LFONTSIZE)
+
+    # --> Ticks
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    # --> Limits
+    #ax.set_xlim([-0.1,40])
+    #ax.set_ylim([-35,220])
+
+    # --> Plot
+    plt.tight_layout()
+    #FigName = 'Rxx-{}-S3.png'.format(PP.Label.replace('.0',''))
+    #print('--> Saving {}'.format(FigName))
+    #plt.savefig(FigName,dpi=500)
+    #
+    ## --> Trim
+    #c = 'convert {F} -trim {F}'.format(F=FigName)
+    #os.system(c)
+    
+    plt.show()
 
 def compute_autocorrelation(t,x,time_blocks):
     """Compute the autocorrelation function"""
@@ -267,56 +315,57 @@ def compute_autocorrelation(t,x,time_blocks):
     # Split into blocks of time time_blocks
     n_blocks = int(t[-1]/time_blocks)
     x_split = np.array_split(x,n_blocks)
+    t_split = np.array_split(t,n_blocks)
 
-    # Truncate to give the same size
+    # Truncate the blocks so that they all have the same length
     max_size = min([elt.shape[0] for elt in x_split])
     x_split = [elt[:max_size] for elt in x_split]
+    t_split = [elt[:max_size] for elt in t_split]
 
     # Loop over the blocks
     for i_block,x_block in enumerate(x_split):
 
-        # fft
-        r = autocorrelation_fft(x_block)
 
-    r /= float(n_blocks)
-    plt.plot(r)
-    plt.show()
+        # Remove the mean
+        for i_dim in range(x.shape[1]):
+            x_block[:,i_dim] -= np.mean(x_block[:,i_dim])
+
+        # fft-based autocorrelation
+        r = autocorrelation_fft(x_block)
+        tau = np.arange(r.size) * (t[1]-t[0])
+
+        if i_block == 0:
+            R = r
+        else:
+            R += r
+
+    R /= float(n_blocks)
+    return R
 
 def autocorrelation_fft(x):
     """Compute the autocorrelation function using FFT and IFFT"""
 
     n = x.shape[0]
 
-    # --> pad 0s to 2n-1
+    # pad 0s to 2n-1
     ext_size=2*n-1
-    # --> nearest power of 2
+    # nearest power of 2
     fsize=2**np.ceil(np.log2(ext_size)).astype('int')
 
     # Loop over the dimensions
     for i_dim in range(x.shape[1]):
 
-        # Remove the mean
-        x[:,i_dim] -= np.mean(x[:,i_dim])
-
-        # --> do fft and ifft
+        # do fft and ifft
         cf=np.fft.fft(x[:,i_dim],fsize)
         sf=cf.conjugate()*cf
         corr=np.fft.ifft(sf).real
         corr=corr/n
 
         if i_dim == 0:
-            r = corr[:int(x[:,i_dim].size)]
+            r = corr[:n]
         else:
-            r += corr[:int(x[:,i_dim].size)]
+            r += corr[:n]
     return r
-
-
-
-    #n = x.shape[0]
-
-    #for i_dim in range(U.shape[1]):
-
-
 
 def create_lorenz_data():
     """Create the Lorenz data"""
@@ -352,42 +401,3 @@ def create_lorenz_data():
     points_to_remove = int(0.05 * n_points)
 
     return data[points_to_remove:,:], dt
-
-
-#
-#        # ----------------------------------------------------------------------
-#        # --> Start plot CNM
-#        # ----------------------------------------------------------------------
-#        plt.close()
-#        fig = plt.figure(figsize=(6,2.5))
-#        ax = fig.add_subplot(111)
-#
-#        ax.plot(
-#                x2,y2,
-#                '-',
-#                c='k',
-#                )
-#
-#        ## --> Labels
-#        FS = 30
-#        if i_dim == 2:
-#            ax.set_xlabel(r'$t$',fontsize=FS)
-#        ax.set_ylabel(r'${}$'.format(Label[i_dim]),fontsize=FS)
-#
-#        # --> Labels
-#        ax.set_xlim([0,tData[-1]-tData[0]])
-#
-#        # --> Invisible axes
-#        plt.xticks([])
-#        plt.yticks([])
-#
-#        # --> Plot
-#        plt.tight_layout()
-#        FigName = '{}-{}-CNM-SF'.format(Label[i_dim],PP.Label.replace('.0',''))
-#        print('--> Saving {}'.format(FigName))
-#        plt.savefig(FigName)
-#        plt.show()
-#
-#
-
-
