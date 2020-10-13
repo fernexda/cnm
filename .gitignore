@@ -3,3 +3,4 @@
 **/*.pyc
 **/*.swp
 cnm/questions
+examples/output
