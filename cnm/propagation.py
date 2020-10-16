@@ -1,8 +1,15 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from tqdm import tqdm
 
 class Propagation:
+    """Perform the CNM propagation
+
+    Attributes
+    ----------
+    """
+
 
     def __init__(self,transition_properties):
 
@@ -30,6 +37,10 @@ class Propagation:
             is the number of steps after spline interpolation.
         """
 
+        print('Starting CNM propagation')
+        print('------------------------')
+        print('Total time: {}'.format(t_total))
+
         # Initialize past of ic, finding the first centroid sequence of size L
         # ending with ic
         past_found = False
@@ -49,6 +60,9 @@ class Propagation:
         t = [0]
         self.visited_centroids = [ic]
 
+        # Initialize the progress bar
+        pbar = tqdm(total=10,desc='Propagation progress')
+
         # Propagate iteratively
         while t[-1] < t_total:
 
@@ -63,14 +77,23 @@ class Propagation:
             # Store visited centroid
             self.visited_centroids.append(next_cl)
 
+            if t[-1] < t_total:
+                pbar.update(10*(t[-1]-t[-2])/t_total)
+        pbar.close()
+        print('\n')
+
         # Get the corresponding states
         x_hat = self.centroids[self.visited_centroids]
+
 
         # Smooth the trajectory
         return self._interpolate_spline(t,x_hat,dt)
 
     def _interpolate_spline(self,t,x,dt):
         """Interpolate the centroid-to-centroid trajectory with splines.
+
+        The time vector at which the x values are interpolated has the same
+        limits as `t`, with a timestep of dt.
 
         Parameters
         ----------

@@ -16,8 +16,6 @@ def runLorenz():
     L = 23 # Model order
 
     # Create the Lorenz data
-    import os
-    import pickle
     data, dt = create_lorenz_data()
     t = np.arange(data.shape[0]) * dt
 

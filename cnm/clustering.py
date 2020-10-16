@@ -29,8 +29,23 @@ class Clustering:
     """
 
     def __init__(self,data,cluster_algo):
+        """
+        Parameters
+        ----------
+
+        data: ndarray of shape (n_snapshots,n_dim)
+            Snapshots of the dynamical system, equally spaced in time.
+
+        cluster_algo: object
+            Instance from the selected clustering class. Must provide a 'fit()'
+            method and return labels_ and cluster_centers_.
+        """
 
         # Perform clustering
+        print('Perform clustering')
+        print('------------------')
+        print('Use {} clusters\n'.format(cluster_algo.n_clusters))
+
         cluster_algo.fit(data)
 
         self.labels = cluster_algo.labels_

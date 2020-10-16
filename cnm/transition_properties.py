@@ -1,12 +1,38 @@
+"""
+This module does this and that
+"""
+
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from itertools import groupby
 
 class TransitionProperties:
     """Compute the direct transition probability Q and the transition time T
 
     Attributes
     ----------
+    clustering: instance
+        Instance from the Clustering class.
+
+    K: int
+        Number of clusters.
+
+    L: int
+        CNM model order
+
+    dt: float
+        Time step of the data.
+
+    labels: ndarray of shape (n_snapshots,)
+        Cluster affiliation of each snapshot.
+
+    centroids: ndarray of shape (K,n_dim)
+        Centroids of the clusters.
+
+    cluster_sequence: ndarray of shape (# transition+1,)
+        Sequence of visited clusters.
+
     Q: dict
         Transition probabilities for an L-order model.  The keys of Q are string
         of the past centroids. If the previously visited centroids are 3
@@ -40,6 +66,26 @@ class TransitionProperties:
     """
 
     def __init__(self, clustering, K: int, L: int, dt):
+        """Compute the transition matrix Q and transition time T.
+
+        Parameters
+        ----------
+            clustering: instance
+                Instance from the Clustering class.
+
+            K: int
+                Number of clusters.
+
+            L: int
+                CNM model order
+
+            dt: float
+                Time step of the data.
+        """
+
+        print('Identify the transition properties')
+        print('----------------------------------')
+        print('Model order: {}'.format(L))
 
         self.clustering = clustering
         self.labels = clustering.labels
@@ -52,7 +98,10 @@ class TransitionProperties:
         if self.L <= 0:
             raise Exception('The model order must be > 0')
 
+        print('Compute Q')
         self._compute_Q()
+
+        print('Compute T\n')
         self._compute_T()
 
     def step(self,past_cl):
@@ -117,21 +166,19 @@ class TransitionProperties:
     def _compute_T(self):
         """Compute the transition time"""
 
-        from itertools import groupby
-
         # Number of steps in each sequentially visited cluster
         n_steps_in_cl = np.array([sum(1 for i in g) for k,g in groupby(self.labels)])
 
         self.T = {}
 
         # Loop over
-        for iCl in range(self.cluster_sequence.size-(self.L+1)): # Last transition is neglected
+        for i_cl in range(self.cluster_sequence.size-(self.L+1)): # Last transition is neglected
 
             # Sequential chunks of length self.L+1 (current, next and all pasts)
-            cluster_sequence_loc = self.cluster_sequence[iCl:iCl+self.L+1]
+            cluster_sequence_loc = self.cluster_sequence[i_cl:i_cl+self.L+1]
 
             transition_time = np.sum(
-                    n_steps_in_cl[iCl+self.L-1:iCl+self.L+1]
+                    n_steps_in_cl[i_cl+self.L-1:i_cl+self.L+1]
                     )/2. * self.dt
 
             key = ','.join(map(str, cluster_sequence_loc))
@@ -148,7 +195,6 @@ class TransitionProperties:
 if __name__=='__main__':
 
     from sklearn.cluster import KMeans
-    import numpy as np
     np.random.seed(0)
 
     # CNM config
@@ -189,4 +235,3 @@ if __name__=='__main__':
 
     # check if T is correct
     assert transition_properties.T == T_test
-

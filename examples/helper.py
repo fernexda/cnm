@@ -26,6 +26,9 @@ TFONTSIZE = 15  # tick font size
 
 def plot_phase_space(data,centroids,labels):
     """Plot the phase space with the snapshots trajectory and the centroids"""
+    
+    print('Plot phase space')
+    print('----------------\n')
 
     n_cl = centroids.shape[0]
 
@@ -85,6 +88,9 @@ def plot_phase_space(data,centroids,labels):
 
 def plot_time_series(t,x,t_hat,x_hat):
     """Plot the time series of data and CNM"""
+
+    print('Plot time series')
+    print('----------------\n')
 
     # Truncate at the same length
     size = min(t.size,t_hat.size)
@@ -193,6 +199,9 @@ def plot_time_series(t,x,t_hat,x_hat):
 def plot_cpd(x,x_hat):
     """Plot the cluster probability vector"""
 
+    print('Plot cluster probability distribution')
+    print('-------------------------------------\n')
+
     # Re-cluster original and CNM data with 10 clusters only for clarity
     from sklearn.cluster import KMeans
     K = 10
@@ -253,6 +262,9 @@ def plot_cpd(x,x_hat):
 def plot_autocorrelation(t,x,t_hat,x_hat):
     """Plot the autocorrelation function"""
 
+    print('Plot autocorrelation function')
+    print('-----------------------------\n')
+
     # Truncate at the same length
     size = min(t.size,t_hat.size)
     t = t[:size]
@@ -309,8 +321,28 @@ def plot_autocorrelation(t,x,t_hat,x_hat):
     
     plt.show()
 
-def compute_autocorrelation(t,x,time_blocks):
-    """Compute the autocorrelation function"""
+def compute_autocorrelation(t,x,time_blocks: float):
+    """Wrapper function to compute the autocorrelation.
+
+    Prepare the data in blocks of length `time_blocks` and calls the appropriate
+    function to compute the autocorrelation.
+    The autocorrelation is block-averaged.
+
+    Parameters
+    ----------
+
+    t: ndarray of shape (n_time steps,)
+        The time vector corresponding to the data vector `x`.
+    x: ndarray of shape (n_time steps,n_dim)
+        Data matrix.
+    time_blocks: float
+        Time range of the blocks used to compute the autocorrelation block-wise.
+
+    Returns
+    -------
+    R: ndarray
+        Block averaged-autocorrelation of `x`.
+    """
 
     # Split into blocks of time time_blocks
     n_blocks = int(t[-1]/time_blocks)
@@ -343,7 +375,18 @@ def compute_autocorrelation(t,x,time_blocks):
     return R
 
 def autocorrelation_fft(x):
-    """Compute the autocorrelation function using FFT and IFFT"""
+    """Compute the autocorrelation function of x with FFT, IFFT, and 0-padding
+
+    Parameters
+    ----------
+    x: ndarray
+        Data matrix.
+
+    Returns
+    -------
+    R: ndarray
+        Autocorrelation of `x`.
+    """
 
     n = x.shape[0]
 
