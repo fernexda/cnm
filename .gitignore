@@ -3,4 +3,6 @@
 **/*.pyc
 **/*.swp
 cnm/questions
+cnm/question.ods
 examples/output
+

@@ -2,11 +2,11 @@
 
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
-
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 from matplotlib import cm
+from scipy.integrate import solve_ivp
 
 # Plotting parameters
 # ------------------------------------------------------------------------------
@@ -86,7 +86,7 @@ def plot_phase_space(data,centroids,labels):
     plt.show()
 
 
-def plot_time_series(t,x,t_hat,x_hat):
+def plot_time_series(t,x,t_hat,x_hat,time_range):
     """Plot the time series of data and CNM"""
 
     print('Plot time series')
@@ -100,7 +100,7 @@ def plot_time_series(t,x,t_hat,x_hat):
     x_hat = x_hat[:size]
 
     # Show only a specific time range
-    t_min,t_max = 45,60
+    t_min,t_max = time_range
     idx_min, idx_max = np.argmin(abs(t-t_min)), np.argmin(abs(t-t_max))
     t, t_hat, x, x_hat = t[idx_min:idx_max], t_hat[idx_min:idx_max], x[idx_min:idx_max], x_hat[idx_min:idx_max]
     t -= t[0]
@@ -259,8 +259,29 @@ def plot_cpd(x,x_hat):
     plt.tight_layout()
     plt.show()
 
-def plot_autocorrelation(t,x,t_hat,x_hat):
-    """Plot the autocorrelation function"""
+def plot_autocorrelation(t,x,t_hat,x_hat,time_blocks,time_range):
+    """Plot the autocorrelation function
+    
+    Parameters
+    ----------
+    t: ndarray
+        Time vector of the reference data.
+
+    x: ndarray
+        Reference data matrix.
+
+    t_hat: ndarray
+        Time vector of the CNM data.
+
+    x_hat: ndarray
+        CNM data matrix.
+
+    time_blocks: float
+        Blocks time range, for the block-averaged autocorrelation computation.
+
+    time_range: tuple
+        x-limits for the plot.
+    """
 
     print('Plot autocorrelation function')
     print('-----------------------------\n')
@@ -273,15 +294,14 @@ def plot_autocorrelation(t,x,t_hat,x_hat):
     x_hat = x_hat[:size]
 
     # Compute autocorrelation function
-    time_blocks = 40
     r = compute_autocorrelation(t,x,time_blocks)
     r_hat = compute_autocorrelation(t_hat,x_hat,time_blocks)
-    lags = np.arange(r.size) * (t[-1]-t[0])
+    lags = np.arange(r.size) * (t[1]-t[0])
 
     # Plot
     fig = plt.figure(figsize=(6,3.5))
     ax = fig.add_subplot(111)
-    
+
     ax.plot(
             lags,
             r,
@@ -306,19 +326,11 @@ def plot_autocorrelation(t,x,t_hat,x_hat):
     ax.set_yticks([])
 
     # --> Limits
-    #ax.set_xlim([-0.1,40])
-    #ax.set_ylim([-35,220])
+    ax.set_xlim(time_range)
 
     # --> Plot
     plt.tight_layout()
-    #FigName = 'Rxx-{}-S3.png'.format(PP.Label.replace('.0',''))
-    #print('--> Saving {}'.format(FigName))
-    #plt.savefig(FigName,dpi=500)
-    #
-    ## --> Trim
-    #c = 'convert {F} -trim {F}'.format(F=FigName)
-    #os.system(c)
-    
+
     plt.show()
 
 def compute_autocorrelation(t,x,time_blocks: float):
@@ -346,6 +358,8 @@ def compute_autocorrelation(t,x,time_blocks: float):
 
     # Split into blocks of time time_blocks
     n_blocks = int(t[-1]/time_blocks)
+    if n_blocks == 0:
+        n_blocks = 1
     x_split = np.array_split(x,n_blocks)
     t_split = np.array_split(t,n_blocks)
 
@@ -364,15 +378,40 @@ def compute_autocorrelation(t,x,time_blocks: float):
 
         # fft-based autocorrelation
         r = autocorrelation_fft(x_block)
-        tau = np.arange(r.size) * (t[1]-t[0])
 
         if i_block == 0:
             R = r
         else:
             R += r
 
-    R /= float(n_blocks)
     return R
+
+def autocorrelation_dot(x):
+    """Compute the autocorrelation function using the dot product.
+
+    This method is slow and not suited for large datasets.
+
+    Parameters
+    ----------
+    x: ndarray
+        Data matrix.
+
+    Returns
+    -------
+    R: ndarray
+        Autocorrelation of `x`.
+    """
+    n = x.shape[0]
+
+    # Compute the autocorrelation
+    corr_matrix = np.dot(x,x.T)
+    r = []
+    for i in range(n):
+        r.append(
+                np.sum(np.diag(corr_matrix,k=i)) / (n-i)
+                )
+    return np.array(r)
+
 
 def autocorrelation_fft(x):
     """Compute the autocorrelation function of x with FFT, IFFT, and 0-padding
@@ -444,3 +483,39 @@ def create_lorenz_data():
     points_to_remove = int(0.05 * n_points)
 
     return data[points_to_remove:,:], dt
+
+def create_roessler_data():
+    """Create the Lorenz data"""
+
+
+    # Lorenz settings
+    a = 0.1
+    b = 0.1
+    c = 14
+    x0,y0,z0 = (1,1,1) # Initial conditions
+    np.random.seed(0)
+
+    # Lorenz system
+    def Rossler(t,q,a,b,c):
+        return [
+                -q[1] - q[2],
+                q[0] + a*q[1],
+                b + q[2]*(q[0]-c),
+                ]
+
+    # Time settings
+    dt = 0.01             # Time step
+    N = 50000             # Total number of steps
+    n_start = 3850        # Number of points to neglect at the beginning (to
+                          # remove the transient phase before the regular
+                          # oscillations)
+    N += n_start
+    t = np.arange(N) * dt # Time vector
+    y0 = [1,1,1]          # Initial conditions
+
+    # Integrate the ode
+    solution = solve_ivp(fun=lambda t, y: Rossler(t, y, a,b,c), t_span = [0,t[-1]], y0 = y0,t_eval=t)
+    data = solution.y[:,n_start:].T
+
+    return data, t[1]-t[0]
+

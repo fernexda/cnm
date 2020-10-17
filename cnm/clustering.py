@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import os
 
 class Clustering:
     """Perform the data clustering with the requested clustering algorithm.
@@ -28,7 +29,7 @@ class Clustering:
         Sequence of visited clusters.
     """
 
-    def __init__(self,data,cluster_algo):
+    def __init__(self,data,cluster_algo,dataset):
         """
         Parameters
         ----------
@@ -46,12 +47,37 @@ class Clustering:
         print('------------------')
         print('Use {} clusters\n'.format(cluster_algo.n_clusters))
 
-        cluster_algo.fit(data)
+        # Ouput path (create folder if necessary)
+        data_folder = 'output/{}'.format(dataset)
+        data_path = os.path.join(
+                data_folder,'clustering-K{}'.format(cluster_algo.n_clusters)
+                )
+        if not os.path.exists(data_folder):
+            os.makedirs(data_folder)
 
-        self.labels = cluster_algo.labels_
-        self.centroids = cluster_algo.cluster_centers_
-        diff = np.diff(self.labels)
-        self.cluster_sequence = self.labels[np.insert(diff.astype(np.bool), 0, True)]
+        if not os.path.exists(data_path+'.npz'):
+
+            cluster_algo.fit(data)
+
+            self.labels = cluster_algo.labels_
+            self.centroids = cluster_algo.cluster_centers_
+            diff = np.diff(self.labels)
+            self.cluster_sequence = self.labels[np.insert(diff.astype(np.bool), 0, True)]
+
+            np.savez(
+                    data_path,
+                    labels = cluster_algo.labels_,
+                    centroids = cluster_algo.cluster_centers_,
+                    cluster_sequence = self.cluster_sequence
+                    )
+
+        else:
+            data = np.load(
+                    data_path+'.npz',
+                    )
+            self.labels = data['labels']
+            self.centroids = data['centroids']
+            self.cluster_sequence = data['cluster_sequence']
 
 if __name__=='__main__':
 
@@ -59,23 +85,24 @@ if __name__=='__main__':
     import numpy as np
     np.random.seed(0)
 
-    # Number of clusters
-    K = 5
+    # number of clusters
+    k = 5
 
     # get test data
     data = np.load('test_data/data.npy')
-    centroids_test = np.loadtxt('test_data/centroids-K{}'.format(K))
-    labels_test = np.loadtxt('test_data/labels-K5'.format(K))
+    centroids_test = np.loadtxt('test_data/centroids-K{}'.format(k))
+    labels_test = np.loadtxt('test_data/labels-K5'.format(k))
 
-    # Perform clustering
+    # perform clustering
     cluster_config = {
             'data': data,
-            'cluster_algo': KMeans(n_clusters=K,max_iter=1000,n_init=100,n_jobs=-1),
+            'cluster_algo': KMeans(n_clusters=k,max_iter=1000,n_init=100,n_jobs=-1),
+            'dataset': 'dummy',
             }
     clustering = Clustering(**cluster_config)
 
-    # Check clustering
+    # check clustering
     assert np.all(clustering.centroids == centroids_test)
 
-    # Check labels
+    # check labels
     assert np.all(clustering.labels == labels_test)
