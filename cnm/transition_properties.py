@@ -104,8 +104,10 @@ class TransitionProperties:
         print('Compute Q')
         self._compute_Q()
 
-        print('Compute T\n')
+        print('Compute T')
         self._compute_T()
+
+        print('\n')
 
     def step(self,past_cl):
         """Find the next centroid and corresponding transition time.
@@ -235,8 +237,11 @@ class TransitionProperties:
             self.T[key].append(transition_time)
 
         # Average the transition times of the same sequence of centroids
+        total_times = []
         for k, transition_times in self.T.items():
             self.T[k] = np.mean(transition_times)
+            total_times.append(self.T[k])
+        print('Average transition time: {}'.format(round(np.mean(total_times),3)))
 
 if __name__=='__main__':
 
