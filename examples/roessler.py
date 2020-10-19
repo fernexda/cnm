@@ -58,15 +58,16 @@ def run_roessler():
     from helper import (plot_phase_space, plot_time_series,plot_cpd,
                         plot_autocorrelation)
 
-    ## phase space
-    #plot_phase_space(data,clustering.centroids,clustering.labels)
+    # phase space
+    plot_phase_space(data,clustering.centroids,clustering.labels)
 
-    ## time series
-    #time_range = (0,100)
-    #plot_time_series(t,data,t_hat,x_hat,time_range)
+    # time series
+    time_range = (0,100)
+    plot_label = ['x','y','z']
+    plot_time_series(t,data,t_hat,x_hat,time_range)
 
-    ## cluster probability distribution
-    #plot_cpd(data,x_hat)
+    # cluster probability distribution
+    plot_cpd(data,x_hat)
 
     # autocorrelation function
     time_blocks = 100

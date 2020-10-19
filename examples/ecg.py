@@ -74,7 +74,8 @@ def run_ecg():
     # time series
     time_range = (0,10)
     n_dim = 1
-    plot_time_series(t,data,t_hat,x_hat,time_range,n_dim)
+    plot_label = ['V']
+    plot_time_series(t,data,t_hat,x_hat,time_range,plot_label,n_dim)
 
     # cluster probability distribution
     plot_cpd(data,x_hat)

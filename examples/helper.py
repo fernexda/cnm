@@ -168,7 +168,7 @@ def smooth_data(data):
     return data_smooth
 
 
-def plot_time_series(t,x,t_hat,x_hat,time_range,n_dim=3):
+def plot_time_series(t,x,t_hat,x_hat,time_range,plot_label,n_dim=3):
     """Plot the time series of data and CNM"""
 
     print('Plot time series')
@@ -187,9 +187,6 @@ def plot_time_series(t,x,t_hat,x_hat,time_range,n_dim=3):
     t, t_hat, x, x_hat = t[idx_min:idx_max], t_hat[idx_min:idx_max], x[idx_min:idx_max], x_hat[idx_min:idx_max]
     t -= t[0]
     t_hat -= t_hat[0]
-
-    # Plot
-    label = ['x','y','z']
 
     # Figure size
     if n_dim == 1:
@@ -231,7 +228,7 @@ def plot_time_series(t,x,t_hat,x_hat,time_range,n_dim=3):
         # Labels
         if i_dim == n_dim-1:
             ax1[i_dim].set_xlabel(r'$t$',fontsize=LFONTSIZE)
-        ax1[i_dim].set_ylabel(r'${}$'.format(label[i_dim]),fontsize=LFONTSIZE)
+        ax1[i_dim].set_ylabel(r'${}$'.format(plot_label[i_dim]),fontsize=LFONTSIZE)
 
         # Lims
         ax1[i_dim].set_xlim([0,t[-1]])
@@ -252,9 +249,9 @@ def plot_time_series(t,x,t_hat,x_hat,time_range,n_dim=3):
                 )
 
         # Labels
-        if i_dim == 2:
+        if i_dim == n_dim-1:
             ax2[i_dim].set_xlabel(r'$t$',fontsize=LFONTSIZE)
-        ax2[i_dim].set_ylabel(r'${}$'.format(label[i_dim]),fontsize=LFONTSIZE)
+        ax2[i_dim].set_ylabel(r'${}$'.format(plot_label[i_dim]),fontsize=LFONTSIZE)
 
         # Lims
         ax2[i_dim].set_xlim([0,t[-1]])
