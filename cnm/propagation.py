@@ -67,7 +67,7 @@ class Propagation:
         while t[-1] < t_total:
 
             # Find the next destination and required time
-            next_cl, transition_time = self.transition.step(past_cl)
+            past_cl, next_cl, transition_time = self.transition.step(past_cl)
 
             # Update the time and past
             past_cl[:-1] = past_cl[1:]

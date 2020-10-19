@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import os
 from matplotlib import cm
 from scipy.integrate import solve_ivp
+from scipy.interpolate import InterpolatedUnivariateSpline
 
 # Plotting parameters
 # ------------------------------------------------------------------------------
@@ -24,13 +25,77 @@ LFONTSIZE = 18  # label font size
 TFONTSIZE = 15  # tick font size
 # ------------------------------------------------------------------------------
 
-def plot_phase_space(data,centroids,labels):
+def plot_phase_space(data,centroids,labels,n_dim=3):
     """Plot the phase space with the snapshots trajectory and the centroids"""
     
     print('Plot phase space')
     print('----------------\n')
 
     n_cl = centroids.shape[0]
+
+    if n_dim == 2:
+        plot_phase_space_2d(n_cl,data,centroids,labels)
+    elif n_dim == 3:
+        plot_phase_space_3d(n_cl,data,centroids,labels)
+    else:
+        raise Exception
+
+def plot_phase_space_2d(n_cl,data,centroids,labels):
+    """Plot the phase space in 2d"""
+
+    plt.close()
+    fig = plt.figure(figsize=(6,5))
+    ax = fig.add_subplot(111)
+
+    # Data line (grey). For clarity, show only part of the trajectory.
+    # The trajectory is smoothed.
+    # 300 represents number of points to make between T.min and T.max
+    data_smooth = smooth_data(data)
+
+    n_snap = 3000
+    ax.plot(
+            data_smooth[:,0],
+            data_smooth[:,1],
+            '-',
+            alpha=0.5,
+            c='grey',
+            zorder=0,
+            linewidth=0.5,
+            )
+
+    # snapshots with their affiliation. For clarity, show only part of the snapshots
+    colors = cm.jet(np.linspace(0,1,n_cl))
+    ax.scatter(
+            data[::2][:n_snap,0],
+            data[::2][:n_snap,1],
+            c=colors[labels[::2][:n_snap]],
+            label='Data',
+            zorder=1,
+            alpha=0.5,
+            s=5,
+            )
+
+    # Centroids
+    ax.plot(
+            centroids[:,0],
+            centroids[:,1],
+            'o',
+            color='k',
+            zorder=5,
+            markersize=7.5,
+            )
+
+    # Background and no axes
+    ax.set_axis_off()
+
+    # Hide grid lines
+    ax.grid(False)
+
+    # show the plot
+    plt.show()
+
+def plot_phase_space_3d(n_cl,data,centroids,labels):
+    """Plot the phase space in 3d"""
 
     plt.close()
     fig = plt.figure(figsize=(6,5))
@@ -85,8 +150,25 @@ def plot_phase_space(data,centroids,labels):
     # show the plot
     plt.show()
 
+def smooth_data(data):
+    """Smooth the data trajectories."""
 
-def plot_time_series(t,x,t_hat,x_hat,time_range):
+    n_points = data.shape[0]
+    n_points_smooth = n_points * 10
+    t = np.arange(n_points)
+    t_smooth = np.linspace(t[0],t[-1],n_points_smooth)
+    data_smooth = np.empty((t_smooth.size,data.shape[1]))
+
+    # Interpolate
+    for i_dim in range(data.shape[1]):
+        spline = InterpolatedUnivariateSpline(t, data[:,i_dim])
+
+        # Store
+        data_smooth[:,i_dim] = spline(t_smooth)
+    return data_smooth
+
+
+def plot_time_series(t,x,t_hat,x_hat,time_range,n_dim=3):
     """Plot the time series of data and CNM"""
 
     print('Plot time series')
@@ -109,19 +191,32 @@ def plot_time_series(t,x,t_hat,x_hat,time_range):
     # Plot
     label = ['x','y','z']
 
+    # Figure size
+    if n_dim == 1:
+        fig_size = (6,2.5)
+    elif n_dim == 3:
+        fig_size = (6,4.5)
+    else:
+        raise Exception('Define a figure size for n_dim={}'.format(n_dim))
+
     # Initialize figure
-    fig1, ax1 = plt.subplots(3, sharex=True, gridspec_kw={'hspace': 0},figsize=(6,4.5))
-    fig2, ax2 = plt.subplots(3, sharex=True, gridspec_kw={'hspace': 0},figsize=(6,4.5))
+    if n_dim == 1:
+        fig1, ax1 = plt.subplots(n_dim,figsize=fig_size)
+        fig2, ax2 = plt.subplots(n_dim,figsize=fig_size)
+        ax1 = [ax1]
+        ax2 = [ax2]
+    else:
+        fig1, ax1 = plt.subplots(n_dim, sharex=True, gridspec_kw={'hspace': 0},figsize=fig_size)
+        fig2, ax2 = plt.subplots(n_dim, sharex=True, gridspec_kw={'hspace': 0},figsize=fig_size)
 
-    for i_dim in range(3):
+    # Set plot y_lims
+    Min = min(x_hat[:,:n_dim].min(),x[:,:n_dim].min())
+    Min = (Min + 0.2 * Min) if np.sign(Min) == -1 else (Min - Min * 0.2)
+    Max = max(x_hat[:,:n_dim].max(),x[:,:n_dim].max())
+    Max = Max + np.sign(Max) * 0.2 * Max
+    y_lim = [Min,Max]
 
-        ## --> Set plot lims
-        #Min = min(UCNM[:,i_dim].min(),UData[:,i_dim].min())
-        #Min = (Min + 0.3 * Min) if np.sign(Min) == -1 else (Min - Min * 0.3)
-        #print(Min)
-        #Max = max(UCNM[:,i_dim].max(),UData[:,i_dim].max())
-        #Max = Max + np.sign(Max) * 0.3 * Max
-        #yLim = [Min,Max]
+    for i_dim in range(n_dim):
 
         # Start plot Data
         # ----------------------------------------------------------------------
@@ -134,16 +229,17 @@ def plot_time_series(t,x,t_hat,x_hat,time_range):
                 )
 
         # Labels
-        if i_dim == 2:
+        if i_dim == n_dim-1:
             ax1[i_dim].set_xlabel(r'$t$',fontsize=LFONTSIZE)
         ax1[i_dim].set_ylabel(r'${}$'.format(label[i_dim]),fontsize=LFONTSIZE)
 
         # Lims
         ax1[i_dim].set_xlim([0,t[-1]])
+        ax1[i_dim].set_ylim(y_lim)
 
-        # --> Ticks
-        if i_dim == 2:
-            ax1[i_dim].set_yticks([10,30])
+        ## --> Ticks
+        #if i_dim == 2:
+        #    ax1[i_dim].set_yticks([10,30])
 
         # Start plot CNM
         # ----------------------------------------------------------------------
@@ -162,12 +258,13 @@ def plot_time_series(t,x,t_hat,x_hat,time_range):
 
         # Lims
         ax2[i_dim].set_xlim([0,t[-1]])
+        ax2[i_dim].set_ylim(y_lim)
 
         # Ticks
-        if i_dim == 2:
-            ax2[i_dim].set_yticks([10,30])
+        #if i_dim == 2:
+        #    ax2[i_dim].set_yticks([10,30])
 
-    for i in range(3):
+    for i in range(n_dim):
         # Ticks
         ax1[i].set_xticks([])
         ax2[i].set_xticks([])
@@ -259,7 +356,7 @@ def plot_cpd(x,x_hat):
     plt.tight_layout()
     plt.show()
 
-def plot_autocorrelation(t,x,t_hat,x_hat,time_blocks,time_range):
+def plot_autocorrelation(t,x,t_hat,x_hat,time_blocks,time_range,method='fft'):
     """Plot the autocorrelation function
     
     Parameters
@@ -294,8 +391,8 @@ def plot_autocorrelation(t,x,t_hat,x_hat,time_blocks,time_range):
     x_hat = x_hat[:size]
 
     # Compute autocorrelation function
-    r = compute_autocorrelation(t,x,time_blocks)
-    r_hat = compute_autocorrelation(t_hat,x_hat,time_blocks)
+    r = compute_autocorrelation(t,x,time_blocks,method)
+    r_hat = compute_autocorrelation(t_hat,x_hat,time_blocks,method)
     lags = np.arange(r.size) * (t[1]-t[0])
 
     # Plot
@@ -333,7 +430,7 @@ def plot_autocorrelation(t,x,t_hat,x_hat,time_blocks,time_range):
 
     plt.show()
 
-def compute_autocorrelation(t,x,time_blocks: float):
+def compute_autocorrelation(t,x,time_blocks: float,method):
     """Wrapper function to compute the autocorrelation.
 
     Prepare the data in blocks of length `time_blocks` and calls the appropriate
@@ -357,7 +454,7 @@ def compute_autocorrelation(t,x,time_blocks: float):
     """
 
     # Split into blocks of time time_blocks
-    n_blocks = int(t[-1]/time_blocks)
+    n_blocks = int(t[-1]/float(time_blocks))
     if n_blocks == 0:
         n_blocks = 1
     x_split = np.array_split(x,n_blocks)
@@ -377,7 +474,10 @@ def compute_autocorrelation(t,x,time_blocks: float):
             x_block[:,i_dim] -= np.mean(x_block[:,i_dim])
 
         # fft-based autocorrelation
-        r = autocorrelation_fft(x_block)
+        if method == 'fft':
+            r = autocorrelation_fft(x_block)
+        elif method == 'dot':
+            r = autocorrelation_dot(x_block)
 
         if i_block == 0:
             R = r

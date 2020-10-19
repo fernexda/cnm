@@ -6,6 +6,8 @@ This module does this and that
 
 import numpy as np
 from itertools import groupby
+from sklearn.neighbors import KDTree
+
 
 class TransitionProperties:
     """Compute the direct transition probability Q and the transition time T
@@ -88,6 +90,7 @@ class TransitionProperties:
         print('Model order: {}'.format(L))
 
         self.clustering = clustering
+        self.centroids = clustering.centroids
         self.labels = clustering.labels
         self.cluster_sequence = clustering.cluster_sequence
         self.K = K
@@ -122,14 +125,57 @@ class TransitionProperties:
         """
 
         # Select next cluster
-        key = ','.join(map(str, past_cl))
-        next_cl = int(np.random.choice(self.Q[key][:,0], p=self.Q[key][:,1]))
+        try:
+            key = ','.join(map(str, past_cl))
+            next_cl = int(np.random.choice(self.Q[key][:,0], p=self.Q[key][:,1]))
+
+        except KeyError:
+
+            # The current centroid has no next centroid (data is too short or
+            # too many centroids)
+            past_cl = self._get_next_cl_from_neighbor(past_cl)
+            key = ','.join(map(str, past_cl))
+
+            next_cl = int(np.random.choice(self.Q[key][:,0], p=self.Q[key][:,1]))
 
         # Read the corresponding transition time
         key = ','.join(map(str, past_cl))+',{}'.format(str(next_cl))
         transition_time = self.T[key]
 
-        return next_cl, transition_time
+        return past_cl, next_cl, transition_time
+
+    def _get_next_cl_from_neighbor(self,past_cl):
+        """Finds the next destination centroid from another trajectory.
+
+        In case where the data time range is too short or there are too many
+        centroids, it can be that a centroid has no destination. The data simply
+        stops in this centroid. In this case, an alternative destination is
+        found, consistent with the current trajectory.
+
+        The steps are:
+
+        1) Find nearest centroid to the current centroid (past_cl[-1])
+        2) Find a past consistent with current trajectory
+        3) Use this past to replace the current past
+        This causes typically a small glitch in the trajectory but allows the
+        system to propagate indefinitely.
+        """
+
+        # Find the nearest neighbor
+        tree = KDTree(self.centroids)
+        dist, ind = tree.query(self.centroids[past_cl[-1],:][None,...],2)
+        ind = ind[0,-1]
+
+        # Find the possible pasts of this nearest neighbor
+        possible_pasts = []
+        for k in self.Q.keys():
+            past = list(map(int, k.split(',')))
+            if past[-1] == ind:
+                possible_pasts.append(past)
+
+        # Assume only one
+        return possible_pasts[0]
+
 
     def _compute_Q(self):
         """Compute the direct transition matrix of order L."""
@@ -138,7 +184,7 @@ class TransitionProperties:
         past_cl = self.cluster_sequence[:self.L].astype(int)
         self.Q = {}
 
-        for next_cl in self.cluster_sequence[self.L:-2]:
+        for next_cl in self.cluster_sequence[self.L:-1]:
 
             key = ','.join(map(str, past_cl))
 

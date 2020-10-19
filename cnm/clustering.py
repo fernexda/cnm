@@ -45,7 +45,10 @@ class Clustering:
         # Perform clustering
         print('Perform clustering')
         print('------------------')
-        print('Use {} clusters\n'.format(cluster_algo.n_clusters))
+        print('Use {} clusters'.format(cluster_algo.n_clusters))
+
+        # Set seeding to reproduce the same results
+        np.random.seed(0)
 
         # Ouput path (create folder if necessary)
         data_folder = 'output/{}'.format(dataset)
@@ -56,6 +59,7 @@ class Clustering:
             os.makedirs(data_folder)
 
         if not os.path.exists(data_path+'.npz'):
+            print('Compute and save in {}'.format(data_path+'.npz'))
 
             cluster_algo.fit(data)
 
@@ -72,18 +76,19 @@ class Clustering:
                     )
 
         else:
+            print('Read from {}'.format(data_path+'.npz'))
             data = np.load(
                     data_path+'.npz',
                     )
             self.labels = data['labels']
             self.centroids = data['centroids']
             self.cluster_sequence = data['cluster_sequence']
+        print('\n')
 
 if __name__=='__main__':
 
     from sklearn.cluster import KMeans
     import numpy as np
-    np.random.seed(0)
 
     # number of clusters
     k = 5

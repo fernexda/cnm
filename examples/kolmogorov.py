@@ -7,16 +7,17 @@ import numpy as np
 from helper import create_roessler_data
 from sklearn.cluster import KMeans
 
-def run_roessler():
+def run_kolmogorov():
 
 
     # CNM parameters:
     # ---------------
-    K = 100 # Number of clusters
-    L = 1 # Model order
+    K = 200 # Number of clusters
+    L = 24 # Model order
 
     # Create the Lorenz data
-    data, dt = create_roessler_data()
+    case_data = np.load('data/kolmogorov.npz')
+    data, dt = case_data['data'], case_data['dt']
     t = np.arange(data.shape[0]) * dt
 
     # Clustering
@@ -24,7 +25,7 @@ def run_roessler():
     cluster_config = {
             'data': data,
             'cluster_algo': KMeans(n_clusters=K,max_iter=300,n_init=10,n_jobs=-1),
-            'dataset': 'roessler',
+            'dataset': 'kolmogorov',
             }
 
     clustering = Clustering(**cluster_config)
@@ -47,7 +48,7 @@ def run_roessler():
             }
 
     ic = 0 # Index of the centroid to start in
-    t_total = 500
+    t_total = 10000
     dt_hat = dt # To spline-interpolate the centroid-to-centroid trajectory
 
     propagation = Propagation(**propagation_config)
@@ -58,21 +59,22 @@ def run_roessler():
     from helper import (plot_phase_space, plot_time_series,plot_cpd,
                         plot_autocorrelation)
 
-    ## phase space
-    #plot_phase_space(data,clustering.centroids,clustering.labels)
+    # phase space
+    n_dim = 2
+    plot_phase_space(data,clustering.centroids,clustering.labels,n_dim=n_dim)
 
-    ## time series
-    #time_range = (0,100)
-    #plot_time_series(t,data,t_hat,x_hat,time_range)
+    # time series
+    time_range = (0,3000)
+    n_dim = 1
+    plot_time_series(t,data,t_hat,x_hat,time_range,n_dim=n_dim)
 
-    ## cluster probability distribution
-    #plot_cpd(data,x_hat)
+    # cluster probability distribution
+    plot_cpd(data,x_hat)
 
     # autocorrelation function
-    time_blocks = 100
-    time_range = [0,80]
-    method = 'dot'
-    plot_autocorrelation(t,data,t_hat,x_hat,time_blocks,time_range,method=method)
+    time_blocks = t_hat[-1]
+    time_range = [0,200]
+    plot_autocorrelation(t,data,t_hat,x_hat,time_blocks,time_range)
 
 if __name__== '__main__':
-    run_roessler()
+    run_kolmogorov()

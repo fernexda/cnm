@@ -13,7 +13,7 @@ def run_lorenz():
     # CNM parameters:
     # ---------------
     K = 50 # Number of clusters
-    L = 23 # Model order
+    L = 22 # Model order
 
     # Create the Lorenz data
     data, dt = create_lorenz_data()
@@ -59,18 +59,19 @@ def run_lorenz():
                         plot_autocorrelation)
 
     # phase space
-    plot_phase_space(data,clustering.centroids,clustering.labels)
+    plot_phase_space(data,clustering.centroids,clustering.labels)#,n_dim)
 
     # time series
     time_range = (45,60)
-    plot_time_series(t,data,t_hat,x_hat,time_range)
+    n_dim = 3
+    plot_time_series(t,data,t_hat,x_hat,time_range,n_dim)
 
     # cluster probability distribution
     plot_cpd(data,x_hat)
 
     # autocorrelation function
     time_blocks = 40
-    time_range = (0,time_blocks)
+    time_range = (-0.5,time_blocks)
     plot_autocorrelation(t,data,t_hat,x_hat,time_blocks,time_range)
 
 if __name__== '__main__':
