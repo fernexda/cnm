@@ -1,4 +1,24 @@
-# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2020 Daniel Fernex.
+# Copyright (c) 2020 Bernd R. Noack.
+# Copyright (c) 2020 Richard Semaan.
+#
+# This file is part of CNM 
+# (see https://github.com/fernexda/cnm).
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 
 import numpy as np
 import os
@@ -6,26 +26,13 @@ import os
 class Clustering:
     """Perform the data clustering with the requested clustering algorithm.
 
-    Parameters
-    ----------
-
-    data: ndarray of shape (n_snapshots,n_dim)
-        Snapshots of the dynamical system, equally spaced in time.
-
-    cluster_algo: object
-        Instance from the chosen clustering class. Must contain the 'fit()'
-        method and return labels_ and cluster_centers_.
-
     Attributes
     ----------
-
-    labels: ndarray of shape (n_snapshots,)
+    labels : ndarray of shape (n_snapshots,)
         Cluster affiliation of each snapshot.
-
-    centroids: ndarray of shape (K,n_dim)
+    centroids : ndarray of shape (K,n_dim)
         Centroids of the clusters.
-
-    cluster_sequence: ndarray of shape (# transition+1,)
+    cluster_sequence : ndarray of shape (# transition+1,)
         Sequence of visited clusters.
     """
 
@@ -33,13 +40,15 @@ class Clustering:
         """
         Parameters
         ----------
-
-        data: ndarray of shape (n_snapshots,n_dim)
+        data : ndarray of shape (n_snapshots,n_dim)
             Snapshots of the dynamical system, equally spaced in time.
-
-        cluster_algo: object
+        cluster_algo : object
             Instance from the selected clustering class. Must provide a 'fit()'
             method and return labels_ and cluster_centers_.
+        dataset : str
+            A label defining the dataset (e.g., 'lorenz', 'boundary_layer',
+            ...). Defines the folder where the clustering output will be
+            stored.
         """
 
         # Perform clustering

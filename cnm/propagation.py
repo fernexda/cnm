@@ -1,4 +1,24 @@
-# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2020 Daniel Fernex.
+# Copyright (c) 2020 Bernd R. Noack.
+# Copyright (c) 2020 Richard Semaan.
+#
+# This file is part of CNM 
+# (see https://github.com/fernexda/cnm).
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 
 import numpy as np
 from tqdm import tqdm
@@ -8,10 +28,23 @@ class Propagation:
 
     Attributes
     ----------
+    transition : instance
+        Instance from the TransitionProperties class.
+    centroids : ndarray of shape (K,n_dim)
+        Centroids of the clusters.
+    cluster_sequence : ndarray of shape (# transition+1,)
+        Sequence of visited clusters.
+    L : int
+        CNM model order
     """
 
-
     def __init__(self,transition_properties):
+        """
+        Parameters
+        ----------
+        transition_transition : instance
+            Instance from the TransitionProperties class.
+        """
 
         self.transition = transition_properties
         self.centroids = transition_properties.clustering.centroids
@@ -23,7 +56,7 @@ class Propagation:
 
         Parameters
         ----------
-        t_total: float
+        t_total : float
             Total simulation time. Propagation stops when this time is reached.
         ic: int
             Initial condition, index of the centroid used as initial condition.
@@ -33,8 +66,8 @@ class Propagation:
         Returns
         -------
         x_hat: ndarray of shape (n_times x n_dim)
-            The predicted states corresponding to the visited centroids. n_times
-            is the number of steps after spline interpolation.
+            The predicted state interpolated with splines. n_times is the number
+            of steps after spline interpolation.
         """
 
         print('Starting CNM propagation')
@@ -58,7 +91,7 @@ class Propagation:
 
         # Initialize variables
         t = [0]
-        self.visited_centroids = [ic]
+        visited_centroids = [ic]
 
         # Initialize the progress bar
         pbar = tqdm(total=10,desc='Propagation progress')
@@ -75,7 +108,7 @@ class Propagation:
             t.append(t[-1] + transition_time)
 
             # Store visited centroid
-            self.visited_centroids.append(next_cl)
+            visited_centroids.append(next_cl)
 
             if t[-1] < t_total:
                 pbar.update(10*(t[-1]-t[-2])/t_total)
@@ -83,7 +116,7 @@ class Propagation:
         print('\n')
 
         # Get the corresponding states
-        x_hat = self.centroids[self.visited_centroids]
+        x_hat = self.centroids[visited_centroids]
 
 
         # Smooth the trajectory

@@ -1,6 +1,24 @@
-"""
-This module does this and that
-"""
+#
+# Copyright (c) 2020 Daniel Fernex.
+# Copyright (c) 2020 Bernd R. Noack.
+# Copyright (c) 2020 Richard Semaan.
+#
+# This file is part of CNM 
+# (see https://github.com/fernexda/cnm).
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+#
 
 # -*- coding: utf-8 -*-
 
@@ -14,36 +32,28 @@ class TransitionProperties:
 
     Attributes
     ----------
-    clustering: instance
+    clustering : instance
         Instance from the Clustering class.
-
-    K: int
+    K : int
         Number of clusters.
-
-    L: int
+    L : int
         CNM model order
-
-    dt: float
+    dt : float
         Time step of the data.
-
-    labels: ndarray of shape (n_snapshots,)
+    labels : ndarray of shape (n_snapshots,)
         Cluster affiliation of each snapshot.
-
-    centroids: ndarray of shape (K,n_dim)
+    centroids : ndarray of shape (K,n_dim)
         Centroids of the clusters.
-
-    cluster_sequence: ndarray of shape (# transition+1,)
+    cluster_sequence : ndarray of shape (# transition+1,)
         Sequence of visited clusters.
-
-    Q: dict
+    Q : dict
         Transition probabilities for an L-order model.  The keys of Q are string
         of the past centroids. If the previously visited centroids are 3
         (newest), 2, and 1 (oldest), the key will be '1,2,3'. The corresponding
         values are 2D arrays, where the first column is the index of the
         possible destination centroid and the 2 column is the corresponding
         probability.
-
-    T: dict
+    T : dict
         Transition times for an L-order model. The keys of T are string
         of the past centroids and the future one. If the previously visited centroids are 3
         (newest), 2, and 1 (oldest), and the next destination is 4, the key will
@@ -68,22 +78,6 @@ class TransitionProperties:
     """
 
     def __init__(self, clustering, K: int, L: int, dt):
-        """Compute the transition matrix Q and transition time T.
-
-        Parameters
-        ----------
-            clustering: instance
-                Instance from the Clustering class.
-
-            K: int
-                Number of clusters.
-
-            L: int
-                CNM model order
-
-            dt: float
-                Time step of the data.
-        """
 
         print('Identify the transition properties')
         print('----------------------------------')
@@ -102,10 +96,10 @@ class TransitionProperties:
             raise Exception('The model order must be > 0')
 
         print('Compute Q')
-        self._compute_Q()
+        self.Q = self._compute_Q()
 
         print('Compute T')
-        self._compute_T()
+        self.T = self._compute_T()
 
         print('\n')
 
@@ -114,15 +108,21 @@ class TransitionProperties:
 
         Parameters
         ----------
-        past_cl: list of length L
+        past_cl : list of length L
             Contains the current and previous centroids. With L=3,
             past_cl=[c_i,c_j,c_k] (in the case where c_l is the destination)
 
         Returns
         -------
-        next_cl: int
+        past_cl : list of length L
+            Contains the current and previous centroids. Note that they might
+            differ from the input parameter `past_cl` in the case where
+            past_cl[-1] has not possible destination. In that case, the method 
+            _get_next_cl_from_neighbor(past_cl) will find a new `past_cl`, as
+            close as possible to the original one.
+        next_cl : int
             Index of the next cluster
-        transition_time: float
+        transition_time : float
             Transition time to transit from past_cl[-1] to next_cl.
         """
 
@@ -150,17 +150,33 @@ class TransitionProperties:
         """Finds the next destination centroid from another trajectory.
 
         In case where the data time range is too short or there are too many
-        centroids, it can be that a centroid has no destination. The data simply
-        stops in this centroid. In this case, an alternative destination is
-        found, consistent with the current trajectory.
+        centroids, it can be that the centroid past_cl[-1] has no destination. This means the
+        data simply stops in this centroid and doesn't go further, i.e., there cannot
+        by any transition from there. In this case, an alternative
+        destination past_cl is found, consistent with the current trajectory,
+        from which a next_cl can be determined.
 
         The steps are:
 
         1) Find nearest centroid to the current centroid (past_cl[-1])
-        2) Find a past consistent with current trajectory
+        2) Find a past of this centroids as similar as possible to the current
+           trajectory
         3) Use this past to replace the current past
         This causes typically a small glitch in the trajectory but allows the
         system to propagate indefinitely.
+
+        Attributes
+        ----------
+        past_cl : list of length L
+            Contains the current and previous centroids. With L=3,
+            past_cl=[c_i,c_j,c_k] (in the case where c_l is the destination).
+            Note that past_cl[-1] has no possible destination.
+
+        Returns
+        -------
+        possible_pasts : list of length L
+            An alternative past_cl, as similar as possible to the original
+            past_cl, that has a possible destination.
         """
 
         # Find the nearest neighbor
@@ -184,24 +200,24 @@ class TransitionProperties:
 
         # Initialize the past as the first L centroids
         past_cl = self.cluster_sequence[:self.L].astype(int)
-        self.Q = {}
+        Q = {}
 
         for next_cl in self.cluster_sequence[self.L:-1]:
 
             key = ','.join(map(str, past_cl))
 
             # Make sure the key exists (and the value is a list)
-            if key not in self.Q:
-                self.Q[key] = []
+            if key not in Q:
+                Q[key] = []
 
-            self.Q[key].append(next_cl)
+            Q[key].append(next_cl)
 
             # update past_cl by removing the oldest element and adding next_cl
             past_cl[:-1] = past_cl[1:]
             past_cl[-1] = next_cl
 
         # Compute the probabilities
-        for k, possible_next in self.Q.items():
+        for k, possible_next in Q.items():
 
             occurrences = np.bincount(possible_next) / len(possible_next)
             probability = np.empty((0,2),dtype=int)
@@ -209,7 +225,9 @@ class TransitionProperties:
                 probability = np.vstack((probability,[elt,occurrences[elt]]))
 
             # Re-write the values with the probabilities
-            self.Q[k] = probability
+            Q[k] = probability
+
+        return Q
 
     def _compute_T(self):
         """Compute the transition time"""
@@ -217,7 +235,7 @@ class TransitionProperties:
         # Number of steps in each sequentially visited cluster
         n_steps_in_cl = np.array([sum(1 for i in g) for k,g in groupby(self.labels)])
 
-        self.T = {}
+        T = {}
 
         # Loop over
         for i_cl in range(self.cluster_sequence.size-(self.L+1)): # Last transition is neglected
@@ -232,16 +250,19 @@ class TransitionProperties:
             key = ','.join(map(str, cluster_sequence_loc))
 
             # Make sure the key exists (and the value is a list)
-            if key not in self.T:
-                self.T[key] = []
-            self.T[key].append(transition_time)
+            if key not in T:
+                T[key] = []
+            T[key].append(transition_time)
 
         # Average the transition times of the same sequence of centroids
         total_times = []
-        for k, transition_times in self.T.items():
-            self.T[k] = np.mean(transition_times)
-            total_times.append(self.T[k])
+        for k, transition_times in T.items():
+            T[k] = np.mean(transition_times)
+            total_times.append(T[k])
+
         print('Average transition time: {}'.format(round(np.mean(total_times),3)))
+
+        return T
 
 if __name__=='__main__':
 
