@@ -37,7 +37,7 @@ The examples are the best place to start. They are located in `examples/` and in
 4. The dissipation energy of the Kolmogorov flow (`kolmogorov.py`)
 5. An actuated turbulent boundary layer (`boundary_layer.py`)
 
-The necessary data for these systems is either created directly by integrating the ODE (for the Lorenz and Rössler systems), or stored in `example/data/`.
+The necessary data for these systems is either created directly by integrating the ODE (for the Lorenz and Rössler systems), or read from `example/data/`.
 
 To run **CNM** on the Lorenz system, simply go into the `examples/` folder and run
 ```console
