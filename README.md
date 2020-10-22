@@ -20,13 +20,13 @@ flow, and a high-dimensional actuated turbulent boundary layer. The different ex
 ### Downloading the source
 The official distribution is on GitHub, and you can clone the repository using
 ```console
-$ git clone https://github.com/fernexda/cnm.git
+git clone https://github.com/fernexda/cnm.git
 ```
 
 ### Dependencies
 **CNM** requires the packages `numpy`, `matplotlib`, `sklearn` and `tqdm`. The examples require additionally `scipy`. The code is tested for Python 3 and not compatibility for Python 2 is guaranteed. The dependencies can be installed using
 ```console
-$ pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ## Getting started
@@ -41,7 +41,7 @@ The necessary data for these systems is either created directly by integrating t
 
 To run **CNM** on the Lorenz system, simply go into the `examples/` folder and run
 ```console
-$ python lorenz.py
+python lorenz.py
 ```
 This will create the data, run **CNM** and generate the relevant plots.
 
